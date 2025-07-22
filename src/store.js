@@ -1,4 +1,5 @@
-import { createStore } from "redux";
+import { createStore, applyMiddleware } from "redux";
+import { thunk } from "redux-thunk";
 
 const initialstate = {
     todos: [],
@@ -9,21 +10,20 @@ const todoReducer = (state = initialstate, action) => {
     switch (action.type) {
         case "ADD_TODO":
             const newTodo = { 
-                id: state.nextId, 
-                title: action.payload.title, 
-                datetime: action.payload.datetime
+                ...(action.payload._id ? { _id: action.payload._id } : { id: state.nextId }),
+                ...action.payload
             };
             return {
                 ...state, 
                 todos: [...state.todos, newTodo], 
-                nextId: state.nextId + 1
+                nextId: action.payload._id ? state.nextId : state.nextId + 1
             };
 
         case "EDIT_TODO":
             return {
                 ...state, 
                 todos: state.todos.map((todo) =>
-                    (todo.id === action.payload.id ? { ...todo, title: action.payload.title, datetime: action.payload.datetime } : todo) // Make sure datetime is updated too
+                    ((todo._id || todo.id) === (action.payload._id || action.payload.id) ? { ...todo, ...action.payload } : todo)
                 )
             }
 
@@ -31,14 +31,21 @@ const todoReducer = (state = initialstate, action) => {
             return {
                 ...state, 
                 todos: state.todos.filter((todo) =>
-                    (todo.id !== action.payload)
+                    ((todo._id || todo.id) !== action.payload)
                 )
             }
-
+        case "SET_TODOS":
+            return {
+                ...state,
+                todos: action.payload,
+            };
         default:
             return state;
     }
 }
 
-const store = createStore(todoReducer);
+const store = createStore(
+    todoReducer,
+    applyMiddleware(thunk)
+);
 export default store;
